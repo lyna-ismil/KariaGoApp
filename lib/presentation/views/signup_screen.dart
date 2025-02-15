@@ -13,6 +13,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
@@ -163,6 +164,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                         _buildTextField(_emailController,
                                             "Email", Icons.email),
                                         SizedBox(height: 20),
+                                        _buildTextField(_phoneNumberController,
+                                            "Phone Number", Icons.phone,
+                                            isNumber:
+                                                true), // Added phone number field
+                                        SizedBox(height: 20),
                                         _buildTextField(_passwordController,
                                             "Password", Icons.lock,
                                             isPassword: true),
@@ -283,10 +289,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Widget _buildTextField(
       TextEditingController controller, String hint, IconData icon,
-      {bool isPassword = false}) {
+      {bool isPassword = false, bool isNumber = false}) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
+      keyboardType: isNumber
+          ? TextInputType.phone
+          : TextInputType.text, // Set number keyboard for phone field
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: Icon(icon, color: Color(0xFF007AFF)),
@@ -307,6 +316,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
         if (hint == "Email" && !value.contains('@')) {
           return 'Please enter a valid email';
+        }
+        if (hint == "Phone Number" && value.length < 8) {
+          return 'Please enter a valid phone number';
         }
         if (hint == "Password" && value.length < 6) {
           return 'Password must be at least 6 characters';

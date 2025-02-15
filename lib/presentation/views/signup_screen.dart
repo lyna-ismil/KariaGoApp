@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:animate_do/animate_do.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -9,21 +11,54 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  String? _errorMessage;
 
-  // Simulated signup function
-  void _signUpWithEmailAndPassword() {
-    setState(() {
+  File? _idCardImage;
+  File? _driverLicenseImage;
+  String? _errorMessage;
+  int _currentStep = 0;
+  bool _isLoading = false;
+
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage(bool isIdCard) async {
+    final XFile? pickedFile =
+        await _picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null) {
+      setState(() {
+        if (isIdCard) {
+          _idCardImage = File(pickedFile.path);
+        } else {
+          _driverLicenseImage = File(pickedFile.path);
+        }
+      });
+    }
+  }
+
+  void _signUpWithEmailAndPassword() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // Simulate API call
+      await Future.delayed(Duration(seconds: 2));
+
+      setState(() {
+        _isLoading = false;
+      });
+
       if (_passwordController.text.trim() !=
           _confirmPasswordController.text.trim()) {
         _errorMessage = "Passwords do not match.";
-      } else if (_emailController.text.isEmpty ||
-          _passwordController.text.isEmpty) {
-        _errorMessage = "Please fill in all fields.";
+      } else if (_idCardImage == null || _driverLicenseImage == null) {
+        _errorMessage = "Please upload both ID card and Driver's License.";
       } else {
         // Navigate to HomeScreen
         Navigator.pushReplacement(
@@ -31,193 +66,362 @@ class _SignUpScreenState extends State<SignUpScreen> {
           MaterialPageRoute(builder: (context) => HomeScreen()),
         );
       }
-    });
+    }
+  }
+
+  String _getPasswordStrength(String password) {
+    if (password.length < 6) {
+      return "Weak";
+    } else if (password.length < 10) {
+      return "Medium";
+    } else {
+      return "Strong";
+    }
+  }
+
+  Color _getPasswordStrengthColor(String strength) {
+    switch (strength) {
+      case "Weak":
+        return Colors.red;
+      case "Medium":
+        return Colors.orange;
+      case "Strong":
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
-            colors: [
-              Color(0xFF007AFF),
-              Color(0xFF0055CC),
-              Color(0xFF003399),
-            ],
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF007AFF), Color(0xFF00CCFF)],
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            SizedBox(height: 80),
-            Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  FadeInUp(
-                    duration: Duration(milliseconds: 1000),
-                    child: Text(
-                      "Sign Up",
-                      style: TextStyle(color: Colors.white, fontSize: 40),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  FadeInUp(
-                    duration: Duration(milliseconds: 1300),
-                    child: Text(
-                      "Create a new account",
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(60),
-                    topRight: Radius.circular(60),
-                  ),
-                ),
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false,
                 child: Padding(
-                  padding: EdgeInsets.all(30),
+                  padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      SizedBox(height: 60),
-                      FadeInUp(
-                        duration: Duration(milliseconds: 1400),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.3),
-                                blurRadius: 20,
-                                offset: Offset(0, 10),
-                              )
-                            ],
-                          ),
-                          child: Column(
-                            children: <Widget>[
-                              // Email Input Field
-                              Container(
-                                padding: EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom:
-                                        BorderSide(color: Colors.grey.shade200),
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: _emailController,
-                                  decoration: InputDecoration(
-                                    hintText: "Email",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                              // Password Input Field
-                              Container(
-                                padding: EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom:
-                                        BorderSide(color: Colors.grey.shade200),
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: _passwordController,
-                                  obscureText: true,
-                                  decoration: InputDecoration(
-                                    hintText: "Password",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                              // Confirm Password Input Field
-                              Container(
-                                padding: EdgeInsets.all(10),
-                                child: TextField(
-                                  controller: _confirmPasswordController,
-                                  obscureText: true,
-                                  decoration: InputDecoration(
-                                    hintText: "Confirm Password",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                      SizedBox(height: 30),
+                      FadeInDown(
+                        duration: Duration(milliseconds: 1000),
+                        child: Text(
+                          "Create Account",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
-                      if (_errorMessage != null)
-                        Padding(
-                          padding: EdgeInsets.only(top: 10),
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(color: Colors.red),
-                          ),
+                      SizedBox(height: 10),
+                      FadeInDown(
+                        duration: Duration(milliseconds: 1200),
+                        child: Text(
+                          "Sign up to get started",
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 18),
                         ),
+                      ),
                       SizedBox(height: 40),
-                      // Sign Up Button
-                      FadeInUp(
-                        duration: Duration(milliseconds: 1600),
-                        child: MaterialButton(
-                          onPressed: _signUpWithEmailAndPassword,
-                          height: 50,
-                          color: Color(0xFF0055CC),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          child: Center(
-                            child: Text(
-                              "Sign Up",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: FadeInUp(
+                          duration: Duration(milliseconds: 1400),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: Offset(0, 10),
+                                )
+                              ],
+                            ),
+                            child: SingleChildScrollView(
+                              child: Padding(
+                                padding: EdgeInsets.all(20),
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    children: <Widget>[
+                                      _buildStepper(),
+                                      SizedBox(height: 20),
+                                      if (_currentStep == 0) ...[
+                                        _buildTextField(_emailController,
+                                            "Email", Icons.email),
+                                        SizedBox(height: 20),
+                                        _buildTextField(_passwordController,
+                                            "Password", Icons.lock,
+                                            isPassword: true),
+                                        SizedBox(height: 10),
+                                        _buildPasswordStrengthIndicator(),
+                                        SizedBox(height: 20),
+                                        _buildTextField(
+                                            _confirmPasswordController,
+                                            "Confirm Password",
+                                            Icons.lock,
+                                            isPassword: true),
+                                      ],
+                                      if (_currentStep == 1) ...[
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildImagePicker(
+                                                label: "ID Card",
+                                                imageFile: _idCardImage,
+                                                onTap: () => _pickImage(true),
+                                                icon: Icons.credit_card,
+                                              ),
+                                            ),
+                                            SizedBox(width: 20),
+                                            Expanded(
+                                              child: _buildImagePicker(
+                                                label: "Driver's License",
+                                                imageFile: _driverLicenseImage,
+                                                onTap: () => _pickImage(false),
+                                                icon: Icons.drive_eta,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                      if (_errorMessage != null)
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 20),
+                                          child: Text(
+                                            _errorMessage!,
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      SizedBox(height: 30),
+                                      _buildActionButton(),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                       SizedBox(height: 20),
-                      // Redirect to Login
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => LoginScreen()),
-                          );
-                        },
-                        child: Text(
-                          "Already have an account? Login",
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
+                      Center(
+                        child: FadeInUp(
+                          duration: Duration(milliseconds: 1800),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => LoginScreen()),
+                              );
+                            },
+                            child: Text(
+                              "Already have an account? Login",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
                       ),
+                      SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildStepper() {
+    return Row(
+      children: [
+        _buildStepCircle(0, "Account"),
+        Expanded(child: Container(height: 2, color: Colors.grey.shade300)),
+        _buildStepCircle(1, "Verification"),
+      ],
+    );
+  }
+
+  Widget _buildStepCircle(int step, String label) {
+    bool isActive = _currentStep >= step;
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: isActive ? Color(0xFF007AFF) : Colors.grey.shade300,
+          child: Text(
+            "${step + 1}",
+            style: TextStyle(color: isActive ? Colors.white : Colors.grey),
+          ),
+        ),
+        SizedBox(height: 5),
+        Text(label,
+            style:
+                TextStyle(color: isActive ? Color(0xFF007AFF) : Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildTextField(
+      TextEditingController controller, String hint, IconData icon,
+      {bool isPassword = false}) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: Color(0xFF007AFF)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Color(0xFF007AFF)),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'This field is required';
+        }
+        if (hint == "Email" && !value.contains('@')) {
+          return 'Please enter a valid email';
+        }
+        if (hint == "Password" && value.length < 6) {
+          return 'Password must be at least 6 characters';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordStrengthIndicator() {
+    String strength = _getPasswordStrength(_passwordController.text);
+    return Row(
+      children: [
+        Text("Password Strength: ", style: TextStyle(color: Colors.grey)),
+        Text(
+          strength,
+          style: TextStyle(
+              color: _getPasswordStrengthColor(strength),
+              fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePicker({
+    required String label,
+    required File? imageFile,
+    required VoidCallback onTap,
+    required IconData icon,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Color(0xFF007AFF), width: 2),
+        ),
+        child: imageFile == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 50, color: Color(0xFF007AFF)),
+                  SizedBox(height: 10),
+                  Text(
+                    label,
+                    style: TextStyle(
+                        color: Color(0xFF007AFF), fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    "Tap to upload",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              )
+            : Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Image.file(
+                      imageFile,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.check_circle,
+                          color: Colors.green, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton() {
+    return ElevatedButton(
+      onPressed: _isLoading
+          ? null
+          : (_currentStep == 0 ? _nextStep : _signUpWithEmailAndPassword),
+      child: _isLoading
+          ? CircularProgressIndicator(color: Colors.white)
+          : Text(
+              _currentStep == 0 ? "Next" : "Sign Up",
+              style: TextStyle(fontSize: 18),
+            ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color(0xFF007AFF),
+        padding: EdgeInsets.symmetric(vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        minimumSize: Size(double.infinity, 50),
+      ),
+    );
+  }
+
+  void _nextStep() {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _currentStep = 1;
+      });
+    }
   }
 }

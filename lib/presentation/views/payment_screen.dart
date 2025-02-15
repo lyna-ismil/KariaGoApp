@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_credit_card/flutter_credit_card.dart';
 import 'dart:io';
 import 'confirmation_screen.dart';
 
@@ -9,8 +8,6 @@ class PaymentScreen extends StatefulWidget {
   final DateTime endDate;
   final String dropOffLocation;
   final String fullName;
-  final File cinImage;
-  final File licenseImage;
   final String paymentMethod;
 
   PaymentScreen({
@@ -19,8 +16,6 @@ class PaymentScreen extends StatefulWidget {
     required this.endDate,
     required this.dropOffLocation,
     required this.fullName,
-    required this.cinImage,
-    required this.licenseImage,
     required this.paymentMethod,
   });
 
@@ -30,12 +25,7 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   final _formKey = GlobalKey<FormState>();
-  String selectedPaymentMethod = "Credit/Debit Card";
-  String cardNumber = "";
-  String expiryDate = "";
-  String cardHolderName = "";
-  String cvvCode = "";
-  bool isCvvFocused = false;
+  String selectedPaymentMethod = "Google Pay / Apple Pay";
   bool isProcessing = false;
 
   void _processPayment() {
@@ -60,8 +50,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
               endDate: widget.endDate,
               dropOffLocation: widget.dropOffLocation,
               fullName: widget.fullName,
-              cinImage: widget.cinImage,
-              licenseImage: widget.licenseImage,
               paymentMethod: selectedPaymentMethod,
             ),
           ),
@@ -91,25 +79,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
               _buildSummaryTile("Drop-Off Location", widget.dropOffLocation),
               _buildSummaryTile("Full Name", widget.fullName),
 
-              // CIN & License Images
-              _buildSectionTitle("Verification Documents"),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildImagePreview(widget.cinImage, "CIN"),
-                  _buildImagePreview(widget.licenseImage, "Driver's License"),
-                ],
-              ),
-              SizedBox(height: 20),
-
               // Payment Method Selection
               _buildSectionTitle("Select Payment Method"),
               _buildPaymentOptions(),
-
-              if (selectedPaymentMethod == "Credit/Debit Card") ...[
-                SizedBox(height: 20),
-                _buildCreditCardForm(),
-              ],
 
               // Pay Button
               SizedBox(height: 20),
@@ -157,12 +129,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Column(
       children: [
         RadioListTile<String>(
-          title: Text("Credit/Debit Card"),
-          value: "Credit/Debit Card",
-          groupValue: selectedPaymentMethod,
-          onChanged: (value) => setState(() => selectedPaymentMethod = value!),
-        ),
-        RadioListTile<String>(
           title: Text("Google Pay / Apple Pay"),
           value: "Google Pay / Apple Pay",
           groupValue: selectedPaymentMethod,
@@ -174,53 +140,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           groupValue: selectedPaymentMethod,
           onChanged: (value) => setState(() => selectedPaymentMethod = value!),
         ),
-      ],
-    );
-  }
-
-  // Credit Card Form
-  Widget _buildCreditCardForm() {
-    return Column(
-      children: [
-        CreditCardWidget(
-          cardNumber: cardNumber,
-          expiryDate: expiryDate,
-          cardHolderName: cardHolderName,
-          cvvCode: cvvCode,
-          showBackView: isCvvFocused,
-          onCreditCardWidgetChange: (CreditCardBrand brand) {},
-        ),
-        CreditCardForm(
-          formKey: _formKey,
-          cardNumber: cardNumber,
-          expiryDate: expiryDate,
-          cardHolderName: cardHolderName,
-          cvvCode: cvvCode,
-          onCreditCardModelChange: (CreditCardModel data) {
-            setState(() {
-              cardNumber = data.cardNumber;
-              expiryDate = data.expiryDate;
-              cardHolderName = data.cardHolderName;
-              cvvCode = data.cvvCode;
-              isCvvFocused = data.isCvvFocused;
-            });
-          },
-        ),
-      ],
-    );
-  }
-
-  // Image Preview
-  Widget _buildImagePreview(File image, String label) {
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(image, height: 100, width: 100, fit: BoxFit.cover),
-        ),
-        SizedBox(height: 5),
-        Text(label,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ],
     );
   }

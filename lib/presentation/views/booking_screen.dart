@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'payment_screen.dart';
 
@@ -16,27 +14,11 @@ class _BookingScreenState extends State<BookingScreen> {
   DateTime? endDate;
   final TextEditingController dropOffController = TextEditingController();
   final TextEditingController fullNameController = TextEditingController();
-  File? _cinImage;
-  File? _licenseImage;
 
   String formatDate(DateTime? date) {
     return date != null
         ? DateFormat('yyyy-MM-dd HH:mm').format(date)
         : "Select Date";
-  }
-
-  Future<void> _captureImage(bool isCIN) async {
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      setState(() {
-        if (isCIN) {
-          _cinImage = File(pickedFile.path);
-        } else {
-          _licenseImage = File(pickedFile.path);
-        }
-      });
-    }
   }
 
   Future<void> _pickDateTime(BuildContext context, bool isStart) async {
@@ -102,9 +84,7 @@ class _BookingScreenState extends State<BookingScreen> {
         startDate == null ||
         endDate == null ||
         dropOffController.text.isEmpty ||
-        fullNameController.text.isEmpty ||
-        _cinImage == null ||
-        _licenseImage == null) {
+        fullNameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Please complete all fields!"),
@@ -123,9 +103,89 @@ class _BookingScreenState extends State<BookingScreen> {
           endDate: endDate!,
           dropOffLocation: dropOffController.text,
           fullName: fullNameController.text,
-          cinImage: _cinImage!,
-          licenseImage: _licenseImage!,
           paymentMethod: "Not Selected Yet",
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+      TextEditingController controller, String hintText, IconData icon) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        hintText: hintText,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCarSelector() {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        hintText: "Select a car",
+      ),
+      value: selectedCar,
+      items: ["Car A", "Car B", "Car C"]
+          .map((car) => DropdownMenuItem(value: car, child: Text(car)))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          selectedCar = value;
+        });
+      },
+    );
+  }
+
+  Widget _buildDateSelector(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => _pickDateTime(context, true),
+            child: Text(formatDate(startDate)),
+          ),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton(
+            onPressed:
+                startDate == null ? null : () => _pickDateTime(context, false),
+            child: Text(formatDate(endDate)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _proceedToPayment,
+        child: Text("Proceed to Payment"),
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(vertical: 15),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
     );
@@ -136,7 +196,6 @@ class _BookingScreenState extends State<BookingScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background image
           Positioned.fill(
             child: Image.network(
               'https://pictures.dealer.com/w/westbroadhyundai/1240/20c14adcb3b6fa8de449c0f8b6a05f34x.jpg?impolicy=downsize_bkpt&w=2500',
@@ -210,18 +269,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         _buildSectionTitle("Full Name"),
                         _buildTextField(fullNameController, "Enter full name",
                             Icons.person),
-                        _buildSectionTitle("Capture National ID (CIN)"),
-                        _buildImageCaptureButton(_cinImage,
-                            () => _captureImage(true), "Capture CIN"),
-                        _buildSectionTitle("Capture Driver's License"),
-                        _buildImageCaptureButton(_licenseImage,
-                            () => _captureImage(false), "Capture License"),
                         SizedBox(height: 30),
                         _buildSubmitButton(),
-                      ]
-                          .animate(interval: 100.ms)
-                          .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.2, end: 0),
+                      ],
                     ),
                   ),
                 ),
@@ -229,138 +279,6 @@ class _BookingScreenState extends State<BookingScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: EdgeInsets.only(top: 20, bottom: 10),
-      child: Text(
-        title,
-        style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade800),
-      ),
-    );
-  }
-
-  Widget _buildCarSelector() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: selectedCar,
-          hint: Text("Choose a car"),
-          items: ["Tesla Model 3", "BMW X5", "Toyota Corolla"]
-              .map((car) => DropdownMenuItem(value: car, child: Text(car)))
-              .toList(),
-          onChanged: (value) => setState(() => selectedCar = value),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateSelector(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildDateButton(context, true),
-        ),
-        SizedBox(width: 16),
-        Expanded(
-          child: _buildDateButton(context, false),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateButton(BuildContext context, bool isStart) {
-    return ElevatedButton.icon(
-      onPressed: () => _pickDateTime(context, isStart),
-      icon: Icon(Icons.calendar_today, color: Colors.blue.shade800),
-      label: Text(
-        formatDate(isStart ? startDate : endDate),
-        style: TextStyle(color: Colors.black87),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey.shade200,
-        padding: EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-      TextEditingController controller, String hint, IconData icon) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.blue.shade800),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.blue.shade800, width: 2),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageCaptureButton(
-      File? image, VoidCallback onPressed, String label) {
-    return Column(
-      children: [
-        image != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(image,
-                    height: 120, width: double.infinity, fit: BoxFit.cover),
-              )
-            : Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child:
-                    Icon(Icons.camera_alt, size: 50, color: Colors.grey[600]),
-              ),
-        SizedBox(height: 10),
-        ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(Icons.camera_alt),
-          label: Text(label),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade800,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return ElevatedButton(
-      onPressed: _proceedToPayment,
-      child: Text("Proceed to Payment", style: TextStyle(fontSize: 18)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        minimumSize: Size(double.infinity, 50),
-        elevation: 5,
       ),
     );
   }

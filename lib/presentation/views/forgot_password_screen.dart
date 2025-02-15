@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
+import './widgets/custom_text_field.dart';
 import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -7,119 +9,291 @@ class ForgotPasswordScreen extends StatefulWidget {
   _ForgotPasswordScreenState createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
+    with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
-  String? _message;
+  late AnimationController _lottieController;
+  int _currentStep = 0;
+  bool _isLoading = false;
 
-  // Simulated password reset function
-  void _resetPassword() {
-    setState(() {
-      if (_emailController.text.isEmpty) {
-        _message = "Please enter your email address.";
-      } else if (!_emailController.text.contains('@')) {
-        _message = "Enter a valid email address.";
-      } else {
-        _message = "A password reset link has been sent to your email.";
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _lottieController = AnimationController(vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _lottieController.dispose();
+    super.dispose();
+  }
+
+  void _nextStep() async {
+    if (_currentStep == 0 && _formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Simulate API call
+      await Future.delayed(Duration(seconds: 2));
+
+      setState(() {
+        _isLoading = false;
+        _currentStep++;
+      });
+      _lottieController.forward();
+    } else if (_currentStep == 1) {
+      setState(() {
+        _currentStep++;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            colors: [Color(0xFF007AFF), Color(0xFF0055CC), Color(0xFF003399)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1E88E5), Color(0xFF64B5F6)],
           ),
         ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: _buildContent(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.all(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          Text(
+            "Password Recovery",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(width: 48), // To balance the layout
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2, end: 0);
+  }
+
+  Widget _buildContent() {
+    return Container(
+      margin: EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          )
+        ],
+      ),
+      child: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            SizedBox(height: 80),
-            Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  FadeInUp(
-                    duration: Duration(milliseconds: 1000),
-                    child: Text("Forgot Password",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                  SizedBox(height: 10),
-                  FadeInUp(
-                    duration: Duration(milliseconds: 1300),
-                    child: Text("Enter your email to reset your password",
-                        style: TextStyle(color: Colors.white, fontSize: 16)),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(60),
-                      topRight: Radius.circular(60)),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(30),
-                  child: Column(
-                    children: <Widget>[
-                      SizedBox(height: 40),
-                      TextField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                            labelText: "Email", border: OutlineInputBorder()),
-                      ),
-                      SizedBox(height: 20),
-                      if (_message != null)
-                        Text(_message!,
-                            style: TextStyle(
-                                color: _message!.contains("sent")
-                                    ? Colors.green
-                                    : Colors.red)),
-                      SizedBox(height: 20),
-                      MaterialButton(
-                        onPressed: _resetPassword,
-                        height: 50,
-                        color: Color(0xFF0055CC),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50)),
-                        child: Center(
-                            child: Text("Send Reset Link",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold))),
-                      ),
-                      SizedBox(height: 20),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => LoginScreen()));
-                        },
-                        child: Text("Back to Login",
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildStepIndicator(),
+            SizedBox(height: 30),
+            _buildStepContent(),
           ],
+        ),
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 600.ms, delay: 300.ms)
+        .scale(begin: Offset(0.8, 0.8), end: Offset(1, 1));
+  }
+
+  Widget _buildStepIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        return Container(
+          width: 12,
+          height: 12,
+          margin: EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _currentStep >= index
+                ? Color(0xFF6A11CB)
+                : Colors.grey.shade300,
+          ),
+        )
+            .animate(target: _currentStep >= index ? 1 : 0)
+            .scale(begin: Offset(0.8, 0.8), end: Offset(1, 1))
+            .fadeIn();
+      }),
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_currentStep) {
+      case 0:
+        return _buildEmailStep();
+      case 1:
+        return _buildVerificationStep();
+      case 2:
+        return _buildSuccessStep();
+      default:
+        return SizedBox.shrink();
+    }
+  }
+
+  Widget _buildEmailStep() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          Lottie.network(
+            'https://assets10.lottiefiles.com/packages/lf20_uwR49r.json',
+            width: 200,
+            height: 200,
+          ),
+          SizedBox(height: 20),
+          Text(
+            "Let's recover your password",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          CustomTextField(
+            controller: _emailController,
+            hintText: "Enter your email",
+            icon: Icons.email,
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your email';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 20),
+          _buildNextButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationStep() {
+    return Column(
+      children: [
+        Lottie.network(
+          'https://assets3.lottiefiles.com/packages/lf20_q7hiluze.json',
+          controller: _lottieController,
+          onLoaded: (composition) {
+            _lottieController
+              ..duration = composition.duration
+              ..forward();
+          },
+          width: 200,
+          height: 200,
+        ),
+        SizedBox(height: 20),
+        Text(
+          "Check your email",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 10),
+        Text(
+          "We've sent a password reset link to ${_emailController.text}",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
+        ),
+        SizedBox(height: 20),
+        _buildNextButton(text: "I've reset my password"),
+      ],
+    );
+  }
+
+  Widget _buildSuccessStep() {
+    return Column(
+      children: [
+        Lottie.network(
+          'https://assets2.lottiefiles.com/packages/lf20_jbrw3hcz.json',
+          width: 200,
+          height: 200,
+          repeat: false,
+        ),
+        SizedBox(height: 20),
+        Text(
+          "Password Reset Successful!",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 10),
+        Text(
+          "Your password has been successfully reset. You can now log in with your new password.",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+            );
+          },
+          child: Text("Back to Login"),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF1E88E5),
+            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNextButton({String text = "Next"}) {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _nextStep,
+      child: _isLoading
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : Text(text, style: TextStyle(fontSize: 18)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color(0xFF1E88E5),
+        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
         ),
       ),
     );

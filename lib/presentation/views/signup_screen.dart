@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'package:http/http.dart' as http;
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -48,25 +51,55 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _errorMessage = null;
       });
 
-      // Simulate API call
-      await Future.delayed(Duration(seconds: 2));
+      try {
+        // ✅ Use correct backend URL for signup
+        const String baseUrl = "http://10.0.2.2:5000/api/users/signup";
+        // If testing on a real device, use your PC’s IP:
+        // const String baseUrl = "http://192.168.x.x:5000/api/users/signup";
+
+        var uri = Uri.parse(baseUrl);
+        var response = await http.post(
+          uri,
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "cin": "12345678", //  Replace with actual input
+            "permis": "PERMIS001", // Replace with actual input
+            "num_phone": _phoneNumberController.text.trim(),
+            "email": _emailController.text.trim(),
+            "password": _passwordController.text.trim(),
+          }),
+        );
+
+        // If signup is successful
+        if (response.statusCode == 201) {
+          var data = jsonDecode(response.body);
+
+          // Save userId & token for future use
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString("userId", data["user"]["_id"]);
+
+          // Navigate to Login Page
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (context) => LoginScreen()));
+
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Signup Successful! Please Login.")));
+        } else {
+          //  Handle API errors correctly
+          var errorData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage = errorData["message"] ?? "Signup failed. Try again.";
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = "Server connection failed. Check your network.";
+        });
+      }
 
       setState(() {
         _isLoading = false;
       });
-
-      if (_passwordController.text.trim() !=
-          _confirmPasswordController.text.trim()) {
-        _errorMessage = "Passwords do not match.";
-      } else if (_idCardImage == null || _driverLicenseImage == null) {
-        _errorMessage = "Please upload both ID card and Driver's License.";
-      } else {
-        // Navigate to HomeScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-        );
-      }
     }
   }
 

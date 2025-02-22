@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'payment_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class BookingScreen extends StatefulWidget {
   @override
@@ -79,7 +82,7 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  void _proceedToPayment() {
+  void _proceedToPayment() async {
     if (selectedCar == null ||
         startDate == null ||
         endDate == null ||
@@ -94,19 +97,65 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentScreen(
-          selectedCar: selectedCar!,
-          startDate: startDate!,
-          endDate: endDate!,
-          dropOffLocation: dropOffController.text,
-          fullName: fullNameController.text,
-          paymentMethod: "Not Selected Yet",
-        ),
-      ),
-    );
+    setState(() {});
+
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString("token");
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please log in first.")),
+        );
+        return;
+      }
+
+      var uri = Uri.parse("http://localhost:5000/api/bookings/book");
+      var response = await http.post(
+        uri,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json"
+        },
+        body: jsonEncode({
+          "carId": selectedCar,
+          "rentalStart": startDate!.toIso8601String(),
+          "rentalEnd": endDate!.toIso8601String(),
+          "dropOffLocation": dropOffController.text,
+          "fullName": fullNameController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        var responseData = jsonDecode(response.body);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Booking confirmed! Proceeding to payment.")),
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentScreen(
+              selectedCar: selectedCar!,
+              startDate: startDate!,
+              endDate: endDate!,
+              dropOffLocation: dropOffController.text,
+              fullName: fullNameController.text,
+              paymentMethod: "Not Selected Yet",
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Booking failed. Please try again.")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: Unable to process booking.")),
+      );
+    }
   }
 
   Widget _buildSectionTitle(String title) {

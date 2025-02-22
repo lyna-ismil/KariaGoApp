@@ -7,6 +7,9 @@ import './widgets/social_login_button.dart';
 import 'home_screen.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -28,22 +31,56 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = null;
       });
 
-      // Simulate API call
-      await Future.delayed(Duration(seconds: 2));
+      try {
+        // ✅ Use correct backend URL for emulator or device
+        const String baseUrl = "http://10.0.2.2:5000/api/users/login";
+        // If testing on a real device, use your PC’s IP:
+        // const String baseUrl = "http://192.168.x.x:5000/api/users/login";
+
+        var uri = Uri.parse(baseUrl);
+        var response = await http.post(
+          uri,
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "email": _emailController.text.trim(),
+            "password": _passwordController.text.trim(),
+          }),
+        );
+
+        // ✅ If login is successful
+        if (response.statusCode == 200) {
+          var data = jsonDecode(response.body);
+
+          // ✅ Save token & user info to SharedPreferences
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString("token", data["token"]);
+          await prefs.setString("email", data["user"]["email"]);
+          await prefs.setString("userId", data["user"]["_id"]); // ✅ Save userId
+
+          // ✅ Navigate to HomeScreen
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (context) => HomeScreen()));
+
+          // ✅ Show success message
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("Login Successful!")));
+        } else {
+          // ❌ Handle API errors correctly
+          var errorData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage =
+                errorData["message"] ?? "Invalid email or password.";
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = "Server connection failed. Check your network.";
+        });
+      }
 
       setState(() {
         _isLoading = false;
       });
-
-      if (_emailController.text == "test@example.com" &&
-          _passwordController.text == "password123") {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => HomeScreen()));
-      } else {
-        setState(() {
-          _errorMessage = "Invalid email or password. Please try again.";
-        });
-      }
     }
   }
 

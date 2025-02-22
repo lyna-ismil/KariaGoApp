@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
@@ -20,7 +23,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       TextEditingController(text: "+1234567890");
 
   bool _isVerified = true; // Change this based on actual user data
-
+  bool _isLoading = false; // Tracks loading state when saving profile
+  String? _errorMessage; // Stores error messages when saving profile
   // Pick Image Function
   Future<void> _pickImage(ImageSource source) async {
     final pickedFile = await ImagePicker().pickImage(source: source);
@@ -32,18 +36,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Save Profile Changes
-  void _saveProfile() {
+  void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Profile Updated Successfully! ✅"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      try {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? userId = prefs.getString("userId");
+
+        if (userId == null) {
+          setState(() {
+            _errorMessage = "User ID not found. Please log in again.";
+            _isLoading = false;
+          });
+          return;
+        }
+
+        // Use correct backend URL
+        const String baseUrl = "http://10.0.2.2:5000/api/users";
+
+        var uri = Uri.parse("$baseUrl/$userId");
+
+        var request = http.MultipartRequest('PUT', uri);
+        request.fields['fullName'] = _fullNameController.text.trim();
+        request.fields['num_phone'] = _phoneController.text.trim();
+
+        //  If a new profile image is selected, attach it
+        if (_profileImage != null) {
+          request.files.add(await http.MultipartFile.fromPath(
+            'profile_picture',
+            _profileImage!.path,
+          ));
+        }
+
+        var response = await request.send();
+        var responseData = await response.stream.bytesToString();
+
+        if (response.statusCode == 200) {
+          var data = jsonDecode(responseData);
+
+          setState(() {
+            _fullNameController.text = data["user"]["fullName"];
+            _phoneController.text = data["user"]["num_phone"];
+            if (data["user"]["profile_picture"] != null) {
+              _profileImage = File(
+                  data["user"]["profile_picture"]); // Update profile image path
+            }
+            _isLoading = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Profile Updated Successfully! ✅")));
+        } else {
+          setState(() {
+            _errorMessage = "Profile update failed. Please try again.";
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = "Server connection failed. Check your network.";
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -232,8 +290,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Save Button Widget
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _saveProfile,
-      child: Text("Save Changes", style: TextStyle(fontSize: 18)),
+      onPressed:
+          _isLoading ? null : _saveProfile, // ✅ Disable button when loading
+      child: _isLoading
+          ? CircularProgressIndicator(color: Colors.white) // ✅ Show loader
+          : Text("Save Changes", style: TextStyle(fontSize: 18)),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,

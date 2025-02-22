@@ -1,11 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/api_service.dart';
+import 'login_screen.dart';
 import 'booking_screen.dart';
 import 'profile_screen.dart';
 import 'reclamation_screen.dart';
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
 
-class HomeScreen extends StatelessWidget {
+class _HomeScreenState extends State<HomeScreen> {
+  String userName = "User"; // Default placeholder
+  String userEmail = "email@example.com"; // Default placeholder
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    var userData = await ApiService.getUserProfile();
+
+    if (userData != null) {
+      setState(() {
+        userName = userData["name"] ?? "User";
+        userEmail = userData["email"] ?? "email@example.com";
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove("token"); // Remove JWT token
+    await prefs.remove("username");
+    await prefs.remove("email");
+
+    // Navigate to login screen and clear previous routes
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,13 +78,12 @@ class HomeScreen extends StatelessWidget {
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                        20, 20, 20, 80), // Added bottom padding for FAB
+                    padding: EdgeInsets.fromLTRB(20, 20, 20, 80),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Welcome to KariaGo",
+                          "Welcome, $userName",
                           style: GoogleFonts.poppins(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -130,7 +169,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    'John Doe',
+                    userName,
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 18,
@@ -138,7 +177,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'john.doe@example.com',
+                    userEmail,
                     style: GoogleFonts.poppins(
                       color: Colors.white70,
                       fontSize: 14,
@@ -154,7 +193,8 @@ class HomeScreen extends StatelessWidget {
                 context, Icons.directions_car, 'Book a Car', BookingScreen()),
             Divider(),
             _buildDrawerItem(context, Icons.settings, 'Settings', null),
-            _buildDrawerItem(context, Icons.exit_to_app, 'Logout', null),
+            _buildDrawerItem(context, Icons.exit_to_app, 'Logout', null,
+                onTap: _logout),
           ],
         ),
       ),
@@ -162,7 +202,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildDrawerItem(
-      BuildContext context, IconData icon, String title, Widget? screen) {
+      BuildContext context, IconData icon, String title, Widget? screen,
+      {VoidCallback? onTap}) {
     return ListTile(
       leading: Icon(icon, color: Colors.indigo.shade800),
       title: Text(
@@ -173,7 +214,9 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       onTap: () {
-        if (screen != null) {
+        if (onTap != null) {
+          onTap(); // If a function is provided (for logout)
+        } else if (screen != null) {
           Navigator.push(
               context, MaterialPageRoute(builder: (context) => screen));
         }

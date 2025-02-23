@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:kariago/services/api_service.dart'; //  Import API Service
 import 'package:lottie/lottie.dart';
 import './widgets/custom_text_field.dart';
 import 'login_screen.dart';
@@ -39,7 +40,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         final response =
             await ApiService.resetPassword(_emailController.text.trim());
 
-        print("✅ Password Reset Request Sent: $response");
+        print(" Password Reset Request Sent: $response");
 
         setState(() {
           _isLoading = false;
@@ -50,9 +51,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             content: Text(response["message"] ??
                 "Check your email for reset instructions")));
 
-        _lottieController.forward(); // ✅ Play animation when email is sent
+        _lottieController.forward(); //  Play animation when email is sent
       } catch (e) {
-        print("❌ Password Reset Failed: $e");
+        print(" Password Reset Failed: $e");
         setState(() {
           _isLoading = false;
         });

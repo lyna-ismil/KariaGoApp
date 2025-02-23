@@ -36,6 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Save Profile Changes
+  // ✅ Save Profile Changes (Updated with Authentication)
   void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -46,25 +47,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? userId = prefs.getString("userId");
+        String? token = prefs.getString("token"); // ✅ Get saved token
 
-        if (userId == null) {
+        if (userId == null || token == null) {
           setState(() {
-            _errorMessage = "User ID not found. Please log in again.";
+            _errorMessage = "Session expired. Please log in again.";
             _isLoading = false;
           });
           return;
         }
 
-        // Use correct backend URL
+        // ✅ Ensure correct backend URL
         const String baseUrl = "http://10.0.2.2:5000/api/users";
-
         var uri = Uri.parse("$baseUrl/$userId");
 
         var request = http.MultipartRequest('PUT', uri);
+        request.headers["Authorization"] =
+            "Bearer $token"; // ✅ Add token for authentication
+        request.headers["Content-Type"] = "application/json";
+
         request.fields['fullName'] = _fullNameController.text.trim();
         request.fields['num_phone'] = _phoneController.text.trim();
 
-        //  If a new profile image is selected, attach it
+        // ✅ If a new profile image is selected, attach it
         if (_profileImage != null) {
           request.files.add(await http.MultipartFile.fromPath(
             'profile_picture',
@@ -82,8 +87,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _fullNameController.text = data["user"]["fullName"];
             _phoneController.text = data["user"]["num_phone"];
             if (data["user"]["profile_picture"] != null) {
-              _profileImage = File(
-                  data["user"]["profile_picture"]); // Update profile image path
+              _profileImage = File(data["user"]
+                  ["profile_picture"]); // ✅ Update profile image path
             }
             _isLoading = false;
           });

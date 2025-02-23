@@ -165,13 +165,16 @@ class _BookingScreenState extends State<BookingScreen> {
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString("token");
-      String? userId = prefs.getString("userId"); // ✅ Get user ID
+      String? token = prefs.getString("token"); // ✅ Retrieve saved token
+      String? userId = prefs.getString("userId"); // ✅ Get logged-in user ID
 
       if (token == null || userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Please log in first.")),
+          SnackBar(content: Text("Session expired. Please log in again.")),
         );
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -179,18 +182,18 @@ class _BookingScreenState extends State<BookingScreen> {
       var response = await http.post(
         uri,
         headers: {
-          "Authorization": "Bearer $token",
+          "Authorization": "Bearer $token", // ✅ Secure API with token
           "Content-Type": "application/json"
         },
         body: jsonEncode({
-          "id_user": userId, // correct user reference
-          "id_car": selectedCar, //  Correct car reference
+          "id_user": userId, // ✅ Correct user reference
+          "id_car": selectedCar, // ✅ Correct car reference
           "date_hour_booking": startDate!.toIso8601String(),
           "date_hour_expire": endDate!.toIso8601String(),
           "location_After_Renting": dropOffController.text,
           "fullName": fullNameController.text,
-          "status": "pending", //  Default status
-          "paiement": 0 //  Default payment amount
+          "status": "pending", // ✅ Default status
+          "paiement": 0 // ✅ Default payment amount
         }),
       );
 
@@ -201,6 +204,7 @@ class _BookingScreenState extends State<BookingScreen> {
           SnackBar(content: Text("Booking confirmed! Proceeding to payment.")),
         );
 
+        // ✅ Navigate to Payment Screen
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -215,8 +219,9 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         );
       } else {
+        var errorResponse = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Booking failed. Please try again.")),
+          SnackBar(content: Text("Booking failed: ${errorResponse['error']}")),
         );
       }
     } catch (e) {
@@ -253,13 +258,13 @@ class _BookingScreenState extends State<BookingScreen> {
       value: selectedCar,
       items: availableCars.map((car) {
         return DropdownMenuItem<String>(
-          value: car["id"].toString(), // ✅ Ensure ID is a String
-          child: Text(car["name"]), // ✅ Display car name
+          value: car["id"].toString(), //  Ensure ID is a String
+          child: Text(car["name"]), //  Display car name
         );
       }).toList(),
       onChanged: (value) {
         setState(() {
-          selectedCar = value; // ✅ Store selected car ID
+          selectedCar = value; // Store selected car ID
         });
       },
     );

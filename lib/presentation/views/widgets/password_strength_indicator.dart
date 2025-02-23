@@ -45,6 +45,27 @@ class PasswordStrengthIndicator extends StatelessWidget {
     }
   }
 
+  // ✅ Strength Bar UI
+  Widget _buildStrengthBar() {
+    double strength = _getStrengthValue();
+    return Row(
+      children: List.generate(4, (index) {
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 2),
+            height: 5,
+            decoration: BoxDecoration(
+              color: index < (strength * 4)
+                  ? _getPasswordStrengthColor()
+                  : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -67,14 +88,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
           ],
         ),
         SizedBox(height: 5),
-        // ✅ Progress Bar for Visual Feedback
-        LinearProgressIndicator(
-          value: _getStrengthValue(),
-          backgroundColor: Colors.grey.shade300,
-          valueColor:
-              AlwaysStoppedAnimation<Color>(_getPasswordStrengthColor()),
-          minHeight: 5,
-        ),
+        _buildStrengthBar(), // ✅ Added strength bar here
       ],
     );
   }

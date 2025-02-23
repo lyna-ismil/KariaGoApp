@@ -3,12 +3,13 @@ const mongoose = require('mongoose');
 const Booking = require('../models/booking');
 const User = require('../models/user'); // Import User model
 const Car = require('../models/car'); //  Import Car model
-const { v4: uuidv4 } = require('uuid'); // ✅ Import uuid
+const { v4: uuidv4 } = require('uuid'); // Import uuid
+const authMiddleware = require('../middleware/authMiddleware'); // Import authentication middleware
 
 const router = express.Router();
 
 //  Create a new booking (Ensure User and Car exist)
-router.post('/', async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
     try {
         const { id_user, id_car, date_hour_booking, date_hour_expire, current_Key_car, status, contrat, paiement } = req.body;
 
@@ -52,11 +53,11 @@ router.post('/', async (req, res) => {
 });
 
 //  Get all bookings (Populate User and Car details)
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     try {
         const bookings = await Booking.find()
-            .populate('id_user', 'cin num_phone email') // ✅ Populate user details
-            .populate('id_car', 'matricule marque location'); // ✅ Populate car details
+            .populate('id_user', 'cin num_phone email') //  Populate user details
+            .populate('id_car', 'matricule marque location'); //  Populate car details
 
         res.json(bookings);
     } catch (err) {

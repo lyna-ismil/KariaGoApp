@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:kariago/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class ReclamationScreen extends StatefulWidget {
@@ -12,6 +14,8 @@ class _ReclamationScreenState extends State<ReclamationScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   File? _image;
+  bool _isLoading = false; // Tracks loading state
+  String? _errorMessage; //  Stores error messages
 
   // Select an image
   Future<void> _pickImage() async {

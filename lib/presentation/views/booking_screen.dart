@@ -15,8 +15,70 @@ class _BookingScreenState extends State<BookingScreen> {
   String? selectedCar;
   DateTime? startDate;
   DateTime? endDate;
+  bool _isLoading = false; // Tracks booking state
+
   final TextEditingController dropOffController = TextEditingController();
   final TextEditingController fullNameController = TextEditingController();
+  List<Map<String, dynamic>> availableCars = []; //  Store available cars
+
+  //  Add `fetchAvailableCars()` here
+  Future<void> fetchAvailableCars() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      var uri = Uri.parse(
+          "http://localhost:5000/api/cars"); // ✅ Update with actual API endpoint
+      var response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        List<dynamic> carList = jsonDecode(response.body);
+
+        setState(() {
+          availableCars = carList
+              .map((car) => {
+                    "id": car["_id"],
+                    "name":
+                        "${car["marque"]} - ${car["matricule"]}", // ✅ Display brand & plate number
+                  })
+              .toList();
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to load available cars.")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error: Unable to load cars.")));
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  //  Call fetchAvailableCars() when the screen loads
+  @override
+  void initState() {
+    super.initState();
+    fetchAvailableCars(); // Fetch cars on screen open
+  }
+
+  // Add `_buildSectionTitle()` here
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue[700],
+        ),
+      ),
+    );
+  }
 
   String formatDate(DateTime? date) {
     return date != null
@@ -97,20 +159,23 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    setState(() {});
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString("token");
+      String? userId = prefs.getString("userId"); // ✅ Get user ID
 
-      if (token == null) {
+      if (token == null || userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please log in first.")),
         );
         return;
       }
 
-      var uri = Uri.parse("http://localhost:5000/api/bookings/book");
+      var uri = Uri.parse("http://localhost:5000/api/bookings");
       var response = await http.post(
         uri,
         headers: {
@@ -118,15 +183,18 @@ class _BookingScreenState extends State<BookingScreen> {
           "Content-Type": "application/json"
         },
         body: jsonEncode({
-          "carId": selectedCar,
-          "rentalStart": startDate!.toIso8601String(),
-          "rentalEnd": endDate!.toIso8601String(),
-          "dropOffLocation": dropOffController.text,
+          "id_user": userId, // correct user reference
+          "id_car": selectedCar, //  Correct car reference
+          "date_hour_booking": startDate!.toIso8601String(),
+          "date_hour_expire": endDate!.toIso8601String(),
+          "location_After_Renting": dropOffController.text,
           "fullName": fullNameController.text,
+          "status": "pending", //  Default status
+          "paiement": 0 //  Default payment amount
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         var responseData = jsonDecode(response.body);
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,20 +224,10 @@ class _BookingScreenState extends State<BookingScreen> {
         SnackBar(content: Text("Error: Unable to process booking.")),
       );
     }
-  }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-      ),
-    );
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Widget _buildTextField(
@@ -193,12 +251,15 @@ class _BookingScreenState extends State<BookingScreen> {
         hintText: "Select a car",
       ),
       value: selectedCar,
-      items: ["Car A", "Car B", "Car C"]
-          .map((car) => DropdownMenuItem(value: car, child: Text(car)))
-          .toList(),
+      items: availableCars.map((car) {
+        return DropdownMenuItem<String>(
+          value: car["id"].toString(), // ✅ Ensure ID is a String
+          child: Text(car["name"]), // ✅ Display car name
+        );
+      }).toList(),
       onChanged: (value) {
         setState(() {
-          selectedCar = value;
+          selectedCar = value; // ✅ Store selected car ID
         });
       },
     );
@@ -229,8 +290,11 @@ class _BookingScreenState extends State<BookingScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _proceedToPayment,
-        child: Text("Proceed to Payment"),
+        onPressed:
+            _isLoading ? null : _proceedToPayment, // ✅ Disable when loading
+        child: _isLoading
+            ? CircularProgressIndicator(color: Colors.white) // ✅ Show loader
+            : Text("Proceed to Payment"),
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.symmetric(vertical: 15),
           shape:

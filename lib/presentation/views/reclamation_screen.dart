@@ -25,22 +25,49 @@ class _ReclamationScreenState extends State<ReclamationScreen> {
   }
 
   // Submit Reclamation
-  void _submitReclamation() {
+  void _submitReclamation() async {
     if (_formKey.currentState!.validate()) {
-      // Simulate sending to the server
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Reclamation Submitted Successfully! ✅"),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Clear form after submission
       setState(() {
-        _titleController.clear();
-        _descriptionController.clear();
-        _image = null;
+        _isLoading = true;
       });
+
+      try {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? userId = prefs.getString("userId"); //  Get logged-in user ID
+
+        if (userId == null) {
+          setState(() {
+            _errorMessage = "User ID not found. Please log in again.";
+            _isLoading = false;
+          });
+          return;
+        }
+
+        final response = await ApiService.submitReclamation(
+          userId,
+          _titleController.text.trim(),
+          _descriptionController.text.trim(),
+          _image, //  Send image if available
+        );
+
+        print(" Reclamation Submitted: $response");
+
+        setState(() {
+          _isLoading = false;
+          _titleController.clear();
+          _descriptionController.clear();
+          _image = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Reclamation Submitted Successfully! ✅")));
+      } catch (e) {
+        print(" Reclamation Submission Failed: $e");
+        setState(() {
+          _errorMessage = "Failed to submit reclamation. Try again.";
+          _isLoading = false;
+        });
+      }
     }
   }
 

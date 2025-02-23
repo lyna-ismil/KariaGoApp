@@ -6,6 +6,8 @@ import 'login_screen.dart';
 import 'booking_screen.dart';
 import 'profile_screen.dart';
 import 'reclamation_screen.dart';
+import 'AboutUsScreen.dart';
+
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -22,13 +24,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserData() async {
-    var userData = await ApiService.getUserProfile();
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString("userId"); // Retrieve user ID
 
-    if (userData != null) {
-      setState(() {
-        userName = userData["name"] ?? "User";
-        userEmail = userData["email"] ?? "email@example.com";
-      });
+      if (userId == null) {
+        setState(() {
+          userName = "User";
+          userEmail = "email@example.com";
+        });
+        return;
+      }
+
+      var userData = await ApiService.getUserProfile(userId); // ✅ Pass userId
+
+      if (userData != null) {
+        setState(() {
+          userName = userData["fullName"] ?? "User"; // ✅ Use correct key
+          userEmail = userData["email"] ?? "email@example.com";
+        });
+      }
+    } catch (e) {
+      print(" Error loading user data: $e");
     }
   }
 
@@ -192,7 +209,9 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildDrawerItem(
                 context, Icons.directions_car, 'Book a Car', BookingScreen()),
             Divider(),
-            _buildDrawerItem(context, Icons.settings, 'Settings', null),
+            _buildDrawerItem(context, Icons.info, 'About Us',
+                AboutUsScreen()), // ✅ New "About Us" item
+            Divider(),
             _buildDrawerItem(context, Icons.exit_to_app, 'Logout', null,
                 onTap: _logout),
           ],

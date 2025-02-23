@@ -2,8 +2,48 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const nodemailer = require('nodemailer');
+
 
 const router = express.Router();
+// Send Password Reset Email
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // Create Reset Token (For now, just a random code)
+        const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Save Reset Token in Database (Optional)
+        user.resetToken = resetToken;
+        await user.save();
+
+        // Send Email with Reset Token
+        let transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: "dhiadriss@gmail.com", //  Change this
+                pass: "uljq jtal pcxp uufe" //  Change this
+            }
+        });
+
+        await transporter.sendMail({
+            from: "noreply@kariago.com",
+            to: email,
+            subject: "Password Reset Code",
+            text: `Your password reset code is: ${resetToken}`,
+        });
+
+        res.json({ message: "Password reset email sent!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Update User Profile
 router.put('/:id', async (req, res) => {
@@ -92,14 +132,14 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ✅ Get all users (Add a debug message)
+//  Get all users (Add a debug message)
 router.get('/', async (req, res) => {
   try {
-      console.log("🟢 GET /api/users request received"); // Debugging log
+      console.log(" GET /api/users request received"); // Debugging log
       const users = await User.find({}, { password: 0 }); // Exclude passwords for security
       res.json(users);
   } catch (err) {
-      console.error("🔥 Error:", err.message);
+      console.error(" Error:", err.message);
       res.status(500).json({ error: err.message });
   }
 });
@@ -116,5 +156,6 @@ router.get('/:id', async (req, res) => {
       res.status(500).json({ error: err.message });
   }
 });
+
 
 module.exports = router;

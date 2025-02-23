@@ -35,14 +35,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         _isLoading = true;
       });
 
-      // Simulate API call
-      await Future.delayed(Duration(seconds: 2));
+      try {
+        final response =
+            await ApiService.resetPassword(_emailController.text.trim());
 
-      setState(() {
-        _isLoading = false;
-        _currentStep++;
-      });
-      _lottieController.forward();
+        print("✅ Password Reset Request Sent: $response");
+
+        setState(() {
+          _isLoading = false;
+          _currentStep++;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(response["message"] ??
+                "Check your email for reset instructions")));
+
+        _lottieController.forward(); // ✅ Play animation when email is sent
+      } catch (e) {
+        print("❌ Password Reset Failed: $e");
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Failed to send reset email. Please try again.")));
+      }
     } else if (_currentStep == 1) {
       setState(() {
         _currentStep++;

@@ -36,11 +36,11 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      var userData = await ApiService.getUserProfile(userId); // ✅ Pass userId
+      var userData = await ApiService.getUserProfile(userId); //  Pass userId
 
       if (userData != null) {
         setState(() {
-          userName = userData["fullName"] ?? "User"; // ✅ Use correct key
+          userName = userData["fullName"] ?? "User"; // Use correct key
           userEmail = userData["email"] ?? "email@example.com";
         });
       }
@@ -210,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context, Icons.directions_car, 'Book a Car', BookingScreen()),
             Divider(),
             _buildDrawerItem(context, Icons.info, 'About Us',
-                AboutUsScreen()), // ✅ New "About Us" item
+                AboutUsScreen()), 
             Divider(),
             _buildDrawerItem(context, Icons.exit_to_app, 'Logout', null,
                 onTap: _logout),

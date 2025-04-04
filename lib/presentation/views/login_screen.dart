@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../constants/api_config.dart';
 import './widgets/custom_text_field.dart';
 import './widgets/password_strength_indicator.dart';
 import './widgets/social_login_button.dart';
@@ -32,10 +33,8 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       try {
-        // ✅ Use correct backend URL for emulator or device
-        const String baseUrl = "http://10.0.2.2:5000/api/users/login";
-        // If testing on a real device, use your PC’s IP:
-        // const String baseUrl = "http://192.168.x.x:5000/api/users/login";
+        //  Use correct backend URL for emulator or device
+        const String baseUrl = "$userEndpoint/login";
 
         var uri = Uri.parse(baseUrl);
         var response = await http.post(
@@ -47,25 +46,25 @@ class _LoginScreenState extends State<LoginScreen> {
           }),
         );
 
-        // ✅ If login is successful
+        //  If login is successful
         if (response.statusCode == 200) {
           var data = jsonDecode(response.body);
 
-          // ✅ Save token & user info to SharedPreferences
+          // Save token & user info to SharedPreferences
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString("token", data["token"]);
           await prefs.setString("email", data["user"]["email"]);
-          await prefs.setString("userId", data["user"]["_id"]); // ✅ Save userId
+          await prefs.setString("userId", data["user"]["_id"]); //Save userId
 
-          // ✅ Navigate to HomeScreen
+          // Navigate to HomeScreen
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (context) => HomeScreen()));
 
-          // ✅ Show success message
+          // Show success message
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text("Login Successful!")));
         } else {
-          // ❌ Handle API errors correctly
+          // Handle API errors correctly
           var errorData = jsonDecode(response.body);
           setState(() {
             _errorMessage =

@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:kariago/presentation/views/home_screen.dart';
 import 'package:kariago/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+
+import '../../constants/api_config.dart';
 
 class ReclamationScreen extends StatefulWidget {
   @override
@@ -33,42 +38,61 @@ class _ReclamationScreenState extends State<ReclamationScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
+        _errorMessage = null;
       });
 
       try {
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? userId = prefs.getString("userId"); //  Get logged-in user ID
+        String? userId = prefs.getString("userId");
+        String? token = prefs.getString("token");
 
-        if (userId == null) {
+        if (userId == null || userId.isEmpty) {
           setState(() {
-            _errorMessage = "User ID not found. Please log in again.";
+            _errorMessage = "User session expired. Please log in again.";
             _isLoading = false;
           });
           return;
         }
+        const String baseUrl = "$userEndpoint/reclamations";
+        var uri = Uri.parse(baseUrl);
+        var request = http.MultipartRequest("POST", uri);
+        request.headers["Authorization"] = "Bearer $token";
 
-        final response = await ApiService.submitReclamation(
-          userId,
-          _titleController.text.trim(),
-          _descriptionController.text.trim(),
-          _image, //  Send image if available
-        );
+        request.fields["id_user"] = userId!;
+        request.fields["message"] = _descriptionController.text.trim();
 
-        print(" Reclamation Submitted: $response");
+        if (_image != null) {
+          request.files
+              .add(await http.MultipartFile.fromPath('image', _image!.path));
+        }
 
-        setState(() {
-          _isLoading = false;
-          _titleController.clear();
-          _descriptionController.clear();
-          _image = null;
-        });
+        var streamedResponse = await request.send();
+        var response = await http.Response.fromStream(streamedResponse);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Reclamation Submitted Successfully! ✅")));
+        if (response.statusCode == 201) {
+          setState(() {
+            _descriptionController.clear();
+            _isLoading = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Reclamation Submitted Successfully!")),
+          );
+
+          // Replace the current route with the Home Page
+          Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => HomeScreen()));
+        } else {
+          var errorData = jsonDecode(response.body);
+          setState(() {
+            _errorMessage = "Reclamation failed: ${errorData['message']}";
+            _isLoading = false;
+          });
+        }
       } catch (e) {
-        print(" Reclamation Submission Failed: $e");
+        print("Error: $e");
         setState(() {
-          _errorMessage = "Failed to submit reclamation. Try again.";
+          _errorMessage = "Server connection failed. Check your network.";
           _isLoading = false;
         });
       }

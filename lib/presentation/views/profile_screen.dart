@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
+import '../../constants/api_config.dart';
+
 class ProfileScreen extends StatefulWidget {
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -35,8 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Save Profile Changes
-  // ✅ Save Profile Changes (Updated with Authentication)
+  // Save Profile Changes (Updated with Authentication)
   void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -47,7 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? userId = prefs.getString("userId");
-        String? token = prefs.getString("token"); // ✅ Get saved token
+        String? token = prefs.getString("token"); //  Get saved token
 
         if (userId == null || token == null) {
           setState(() {
@@ -57,19 +58,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return;
         }
 
-        // ✅ Ensure correct backend URL
-        const String baseUrl = "http://10.0.2.2:5000/api/users";
+        //  Correct backend URL
+        const String baseUrl = "$userEndpoint/users";
         var uri = Uri.parse("$baseUrl/$userId");
 
+        //  Use MultipartRequest for file upload
         var request = http.MultipartRequest('PUT', uri);
-        request.headers["Authorization"] =
-            "Bearer $token"; // ✅ Add token for authentication
-        request.headers["Content-Type"] = "application/json";
+        request.headers["Authorization"] = "Bearer $token";
 
-        request.fields['fullName'] = _fullNameController.text.trim();
+        // Send correct field names
         request.fields['num_phone'] = _phoneController.text.trim();
 
-        // ✅ If a new profile image is selected, attach it
+        // Attach profile image if updated
         if (_profileImage != null) {
           request.files.add(await http.MultipartFile.fromPath(
             'profile_picture',
@@ -84,11 +84,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           var data = jsonDecode(responseData);
 
           setState(() {
-            _fullNameController.text = data["user"]["fullName"];
             _phoneController.text = data["user"]["num_phone"];
             if (data["user"]["profile_picture"] != null) {
-              _profileImage = File(data["user"]
-                  ["profile_picture"]); // ✅ Update profile image path
+              _profileImage = File(
+                  data["user"]["profile_picture"]); // Update profile image path
             }
             _isLoading = false;
           });
@@ -96,8 +95,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Profile Updated Successfully! ✅")));
         } else {
+          var errorData = jsonDecode(responseData);
           setState(() {
-            _errorMessage = "Profile update failed. Please try again.";
+            _errorMessage = "Profile update failed: ${errorData['message']}";
             _isLoading = false;
           });
         }
@@ -296,9 +296,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSaveButton() {
     return ElevatedButton(
       onPressed:
-          _isLoading ? null : _saveProfile, // ✅ Disable button when loading
+          _isLoading ? null : _saveProfile, //  Disable button when loading
       child: _isLoading
-          ? CircularProgressIndicator(color: Colors.white) // ✅ Show loader
+          ? CircularProgressIndicator(color: Colors.white) //  Show loader
           : Text("Save Changes", style: TextStyle(fontSize: 18)),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue[700],

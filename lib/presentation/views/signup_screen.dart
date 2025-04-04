@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/api_config.dart';
 import 'home_screen.dart';
+import './widgets/password_strength_indicator.dart'; // Import the PasswordStrengthIndicator widget
 import 'login_screen.dart';
 import 'package:http/http.dart' as http;
 
@@ -45,48 +47,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _signUpWithEmailAndPassword() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate() &&
+        _idCardImage != null &&
+        _driverLicenseImage != null) {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
       });
 
       try {
-        // ✅ Use correct backend URL for signup
-        const String baseUrl = "http://10.0.2.2:5000/api/users/signup";
-        // If testing on a real device, use your PC’s IP:
-        // const String baseUrl = "http://192.168.x.x:5000/api/users/signup";
-
+        const String baseUrl = "$userEndpoint/signup";
         var uri = Uri.parse(baseUrl);
-        var response = await http.post(
-          uri,
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "cin": "12345678", //  Replace with actual input
-            "permis": "PERMIS001", // Replace with actual input
-            "num_phone": _phoneNumberController.text.trim(),
-            "email": _emailController.text.trim(),
-            "password": _passwordController.text.trim(),
-          }),
-        );
 
-        // If signup is successful
+        var request = http.MultipartRequest('POST', uri);
+
+        //  Debug: Print data before sending
+        print("Sending Data: ");
+        print("Phone: ${_phoneNumberController.text.trim()}");
+        print("Email: ${_emailController.text.trim()}");
+        print("Password: ${_passwordController.text.trim()}");
+        print("CIN Image Path: ${_idCardImage!.path}");
+        print("Permis Image Path: ${_driverLicenseImage!.path}");
+
+        request.fields['num_phone'] = _phoneNumberController.text.trim();
+        request.fields['email'] = _emailController.text.trim();
+        request.fields['password'] = _passwordController.text.trim();
+
+        //  Attach Images (CIN & Driver License)
+        request.files
+            .add(await http.MultipartFile.fromPath("cin", _idCardImage!.path));
+        request.files.add(await http.MultipartFile.fromPath(
+            "permis", _driverLicenseImage!.path));
+
+        var response = await request.send();
+        var responseData = await response.stream.bytesToString();
+
+        print("Signup Response Code: ${response.statusCode}");
+        print("Signup Response Body: $responseData");
+
         if (response.statusCode == 201) {
-          var data = jsonDecode(response.body);
+          var data = jsonDecode(responseData);
 
-          // Save userId & token for future use
+          //  Save userId & token for future use
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString("userId", data["user"]["_id"]);
+          await prefs.setString("token", data["token"]); // Save JWT Token
 
-          // Navigate to Login Page
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (context) => LoginScreen()));
 
           ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Signup Successful! Please Login.")));
         } else {
-          //  Handle API errors correctly
-          var errorData = jsonDecode(response.body);
+          var errorData = jsonDecode(responseData);
           setState(() {
             _errorMessage = errorData["message"] ?? "Signup failed. Try again.";
           });
@@ -99,6 +112,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       setState(() {
         _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage =
+            "All fields, including CIN & Permis images, are required!";
       });
     }
   }

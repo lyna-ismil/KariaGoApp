@@ -6,7 +6,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
   const PasswordStrengthIndicator({Key? key, required this.password})
       : super(key: key);
 
-  // ✅ Improved Password Strength Logic
+  // Improved Password Strength Logic
   String _getPasswordStrength() {
     if (password.isEmpty) return 'Enter Password';
     if (password.length < 6) return 'Weak';
@@ -17,7 +17,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
     return 'Medium';
   }
 
-  // ✅ Improved Strength Color Logic
+  // Improved Strength Color Logic
   Color _getPasswordStrengthColor() {
     switch (_getPasswordStrength()) {
       case 'Weak':
@@ -31,7 +31,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
     }
   }
 
-  // ✅ Convert Strength to Progress Value
+  // Convert Strength to Progress Value
   double _getStrengthValue() {
     switch (_getPasswordStrength()) {
       case 'Weak':
@@ -45,7 +45,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
     }
   }
 
-  // ✅ Strength Bar UI
+  // Strength Bar UI
   Widget _buildStrengthBar() {
     double strength = _getStrengthValue();
     return Row(
@@ -88,7 +88,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
           ],
         ),
         SizedBox(height: 5),
-        _buildStrengthBar(), // ✅ Added strength bar here
+        _buildStrengthBar(), //Added strength bar here
       ],
     );
   }

@@ -33,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       try {
-        //  Use correct backend URL for emulator or device
         const String baseUrl = "$userEndpoint/login";
 
         var uri = Uri.parse(baseUrl);
@@ -46,25 +45,19 @@ class _LoginScreenState extends State<LoginScreen> {
           }),
         );
 
-        //  If login is successful
         if (response.statusCode == 200) {
           var data = jsonDecode(response.body);
 
-          // Save token & user info to SharedPreferences
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString("token", data["token"]);
-          await prefs.setString("email", data["user"]["email"]);
-          await prefs.setString("userId", data["user"]["_id"]); //Save userId
+          await prefs.setString(
+              "userId", data["user"]["_id"]); // ✅ Only save userId
 
-          // Navigate to HomeScreen
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (context) => HomeScreen()));
 
-          // Show success message
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text("Login Successful!")));
         } else {
-          // Handle API errors correctly
           var errorData = jsonDecode(response.body);
           setState(() {
             _errorMessage =

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:intl/intl.dart'; // ✅ For nice date formatting
 import 'confirmation_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -58,6 +58,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  String formatDate(DateTime date) {
+    return DateFormat('MMM dd, yyyy – HH:mm').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,8 +78,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             children: [
               _buildSectionTitle("Booking Summary"),
               _buildSummaryTile("Car Model", widget.selectedCar),
-              _buildSummaryTile("Rental Start", "${widget.startDate}"),
-              _buildSummaryTile("Rental End", "${widget.endDate}"),
+              _buildSummaryTile("Rental Start", formatDate(widget.startDate)),
+              _buildSummaryTile("Rental End", formatDate(widget.endDate)),
               _buildSummaryTile("Drop-Off Location", widget.dropOffLocation),
               _buildSummaryTile("Full Name", widget.fullName),
 
@@ -88,7 +92,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ElevatedButton(
                 onPressed: isProcessing ? null : _processPayment,
                 child: isProcessing
-                    ? CircularProgressIndicator(color: Colors.white)
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
                     : Text("Confirm Payment", style: TextStyle(fontSize: 18)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade800,
@@ -97,6 +106,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
+                  minimumSize: Size(double.infinity, 50),
                 ),
               ),
             ],
@@ -110,8 +120,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: EdgeInsets.only(top: 20, bottom: 10),
-      child: Text(title,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -119,7 +131,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildSummaryTile(String title, String value) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        title,
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
       subtitle: Text(value),
     );
   }

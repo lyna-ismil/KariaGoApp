@@ -15,19 +15,57 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // User data
   File? _profileImage;
-  final TextEditingController _fullNameController =
-      TextEditingController(text: "John Doe");
-  final TextEditingController _emailController =
-      TextEditingController(text: "johndoe@example.com");
-  final TextEditingController _phoneController =
-      TextEditingController(text: "+1234567890");
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
-  bool _isVerified = true; // Change this based on actual user data
-  bool _isLoading = false; // Tracks loading state when saving profile
-  String? _errorMessage; // Stores error messages when saving profile
-  // Pick Image Function
+  bool _isVerified = true;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString("userId");
+
+      if (userId == null) {
+        setState(() {
+          _errorMessage = "Session expired. Please log in again.";
+        });
+        return;
+      }
+
+      final response = await http.get(Uri.parse("$userEndpoint/users/$userId"));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final user = data["user"];
+
+        setState(() {
+          _fullNameController.text = user["fullName"] ?? "";
+          _emailController.text = user["email"] ?? "";
+          _phoneController.text = user["num_phone"] ?? "";
+          _isVerified = user["isVerified"] ?? false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = "Failed to load profile";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Server connection failed. Check your network.";
+      });
+    }
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     final pickedFile = await ImagePicker().pickImage(source: source);
     if (pickedFile != null) {
@@ -37,7 +75,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Save Profile Changes (Updated with Authentication)
   void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -48,9 +85,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         String? userId = prefs.getString("userId");
-        String? token = prefs.getString("token"); //  Get saved token
 
-        if (userId == null || token == null) {
+        if (userId == null) {
           setState(() {
             _errorMessage = "Session expired. Please log in again.";
             _isLoading = false;
@@ -58,18 +94,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return;
         }
 
-        //  Correct backend URL
         const String baseUrl = "$userEndpoint/users";
         var uri = Uri.parse("$baseUrl/$userId");
 
-        //  Use MultipartRequest for file upload
         var request = http.MultipartRequest('PUT', uri);
-        request.headers["Authorization"] = "Bearer $token";
-
-        // Send correct field names
         request.fields['num_phone'] = _phoneController.text.trim();
 
-        // Attach profile image if updated
         if (_profileImage != null) {
           request.files.add(await http.MultipartFile.fromPath(
             'profile_picture',
@@ -86,14 +116,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _phoneController.text = data["user"]["num_phone"];
             if (data["user"]["profile_picture"] != null) {
-              _profileImage = File(
-                  data["user"]["profile_picture"]); // Update profile image path
+              _profileImage = File(data["user"]["profile_picture"]);
             }
             _isLoading = false;
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Profile Updated Successfully! ✅")));
+            SnackBar(content: Text("Profile Updated Successfully! ✅")),
+          );
         } else {
           var errorData = jsonDecode(responseData);
           setState(() {
@@ -156,7 +186,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Profile Picture Widget
   Widget _buildProfilePicture() {
     return Hero(
       tag: 'profilePicture',
@@ -208,7 +237,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Verification Badge Widget
   Widget _buildVerificationBadge() {
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),
@@ -238,7 +266,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Information Card Widget
   Widget _buildInfoCard() {
     return Card(
       elevation: 8,
@@ -266,7 +293,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Custom Text Field Widget
   Widget _buildTextField(IconData icon, String label,
       TextEditingController controller, String hint,
       {bool readOnly = false}) {
@@ -292,13 +318,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Save Button Widget
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed:
-          _isLoading ? null : _saveProfile, //  Disable button when loading
+      onPressed: _isLoading ? null : _saveProfile,
       child: _isLoading
-          ? CircularProgressIndicator(color: Colors.white) //  Show loader
+          ? CircularProgressIndicator(color: Colors.white)
           : Text("Save Changes", style: TextStyle(fontSize: 18)),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue[700],
@@ -309,11 +333,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Logout Button Widget
   Widget _buildLogoutButton() {
     return TextButton(
       onPressed: () {
-        // Implement logout functionality
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -328,8 +350,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 TextButton(
                   child: Text("Logout"),
                   onPressed: () {
-                    // Implement logout logic here
                     Navigator.of(context).pop();
+                    // TODO: Implement logout logic
                   },
                 ),
               ],
@@ -341,7 +363,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Function to show image picker options
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,

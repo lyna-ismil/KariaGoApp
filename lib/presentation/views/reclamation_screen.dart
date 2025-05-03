@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:kariago/presentation/views/home_screen.dart';
-import 'package:kariago/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
@@ -20,7 +19,7 @@ class _ReclamationScreenState extends State<ReclamationScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   File? _image;
   bool _isLoading = false; // Tracks loading state
-  String? _errorMessage; //  Stores error messages
+  String? _errorMessage; // Stores error messages
 
   // Select an image
   Future<void> _pickImage() async {

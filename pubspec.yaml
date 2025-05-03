@@ -46,6 +46,9 @@ dependencies:
   font_awesome_flutter: ^10.8.0
   http: ^1.3.0
   shared_preferences: ^2.5.2
+  image: ^4.0.17
+  flutter_map: ^6.0.0
+  latlong2: 0.9.1
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +73,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/KariaGo.gif
+    - assets/avatar_placeholder.png
+    - assets/car.png
   # To add assets to your application, add an assets section, like this:
   
   #   - images/a_dot_ham.jpeg

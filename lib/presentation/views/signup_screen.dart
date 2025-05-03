@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/api_config.dart';
 import 'home_screen.dart';
-import './widgets/password_strength_indicator.dart'; // Import the PasswordStrengthIndicator widget
+import './widgets/password_strength_indicator.dart';
 import 'login_screen.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,6 +18,7 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -31,9 +33,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   final ImagePicker _picker = ImagePicker();
 
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneNumberController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<File> compressImage(File file) async {
+    final bytes = await file.readAsBytes();
+    img.Image? image = img.decodeImage(bytes);
+
+    if (image != null) {
+      img.Image resized = img.copyResize(image, width: 800);
+      final compressedBytes = img.encodeJpg(resized, quality: 70);
+      final compressedFile = File(file.path)..writeAsBytesSync(compressedBytes);
+      return compressedFile;
+    } else {
+      return file;
+    }
+  }
+
   Future<void> _pickImage(bool isIdCard) async {
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.camera);
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 60,
+      maxWidth: 800,
+    );
 
     if (pickedFile != null) {
       setState(() {
@@ -59,45 +88,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const String baseUrl = "$userEndpoint/signup";
         var uri = Uri.parse(baseUrl);
 
+        File compressedIdCard = await compressImage(_idCardImage!);
+        File compressedDriverLicense =
+            await compressImage(_driverLicenseImage!);
+
         var request = http.MultipartRequest('POST', uri);
 
-        //  Debug: Print data before sending
-        print("Sending Data: ");
-        print("Phone: ${_phoneNumberController.text.trim()}");
-        print("Email: ${_emailController.text.trim()}");
-        print("Password: ${_passwordController.text.trim()}");
-        print("CIN Image Path: ${_idCardImage!.path}");
-        print("Permis Image Path: ${_driverLicenseImage!.path}");
-
-        request.fields['num_phone'] = _phoneNumberController.text.trim();
+        request.fields['fullName'] = _fullNameController.text.trim();
         request.fields['email'] = _emailController.text.trim();
+        request.fields['num_phone'] = _phoneNumberController.text.trim();
         request.fields['password'] = _passwordController.text.trim();
 
-        //  Attach Images (CIN & Driver License)
-        request.files
-            .add(await http.MultipartFile.fromPath("cin", _idCardImage!.path));
+        request.files.add(
+            await http.MultipartFile.fromPath("cin", compressedIdCard.path));
         request.files.add(await http.MultipartFile.fromPath(
-            "permis", _driverLicenseImage!.path));
+            "permis", compressedDriverLicense.path));
 
-        var response = await request.send();
-        var responseData = await response.stream.bytesToString();
+        var streamedResponse =
+            await request.send().timeout(Duration(seconds: 60));
+        var responseData = await streamedResponse.stream.bytesToString();
 
-        print("Signup Response Code: ${response.statusCode}");
-        print("Signup Response Body: $responseData");
-
-        if (response.statusCode == 201) {
+        if (streamedResponse.statusCode == 201) {
           var data = jsonDecode(responseData);
 
-          //  Save userId & token for future use
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString("userId", data["user"]["_id"]);
-          await prefs.setString("token", data["token"]); // Save JWT Token
 
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => LoginScreen()));
+            context,
+            MaterialPageRoute(builder: (context) => LoginScreen()),
+          );
 
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Signup Successful! Please Login.")));
+            SnackBar(content: Text("Signup Successful! Please Login.")),
+          );
         } else {
           var errorData = jsonDecode(responseData);
           setState(() {
@@ -122,13 +146,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   String _getPasswordStrength(String password) {
-    if (password.length < 6) {
-      return "Weak";
-    } else if (password.length < 10) {
-      return "Medium";
-    } else {
-      return "Strong";
-    }
+    if (password.length < 6) return "Weak";
+    if (password.length < 10) return "Medium";
+    return "Strong";
   }
 
   Color _getPasswordStrengthColor(String strength) {
@@ -164,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
+                    children: [
                       SizedBox(height: 30),
                       FadeInDown(
                         duration: Duration(milliseconds: 1000),
@@ -199,7 +219,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   color: Colors.black.withOpacity(0.1),
                                   blurRadius: 20,
                                   offset: Offset(0, 10),
-                                )
+                                ),
                               ],
                             ),
                             child: SingleChildScrollView(
@@ -208,17 +228,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 child: Form(
                                   key: _formKey,
                                   child: Column(
-                                    children: <Widget>[
+                                    children: [
                                       _buildStepper(),
                                       SizedBox(height: 20),
                                       if (_currentStep == 0) ...[
+                                        _buildTextField(_fullNameController,
+                                            "Full Name", Icons.person),
+                                        SizedBox(height: 20),
                                         _buildTextField(_emailController,
                                             "Email", Icons.email),
                                         SizedBox(height: 20),
                                         _buildTextField(_phoneNumberController,
                                             "Phone Number", Icons.phone,
-                                            isNumber:
-                                                true), // Added phone number field
+                                            isNumber: true),
                                         SizedBox(height: 20),
                                         _buildTextField(_passwordController,
                                             "Password", Icons.lock,
@@ -288,10 +310,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             child: Text(
                               "Already have an account? Login",
                               style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16),
                             ),
                           ),
                         ),
@@ -344,16 +365,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
-      keyboardType: isNumber
-          ? TextInputType.phone
-          : TextInputType.text, // Set number keyboard for phone field
+      keyboardType: isNumber ? TextInputType.phone : TextInputType.text,
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: Icon(icon, color: Color(0xFF007AFF)),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Color(0xFF007AFF)),
@@ -362,18 +378,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
         fillColor: Colors.grey.shade100,
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'This field is required';
-        }
-        if (hint == "Email" && !value.contains('@')) {
+        if (value == null || value.isEmpty) return 'This field is required';
+        if (hint == "Email" && !value.contains('@'))
           return 'Please enter a valid email';
-        }
-        if (hint == "Phone Number" && value.length < 8) {
+        if (hint == "Phone Number" && value.length < 8)
           return 'Please enter a valid phone number';
-        }
-        if (hint == "Password" && value.length < 6) {
+        if (hint == "Password" && value.length < 6)
           return 'Password must be at least 6 characters';
-        }
+        if (hint == "Full Name" && value.length < 2)
+          return 'Please enter your full name';
         return null;
       },
     );
@@ -387,8 +400,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Text(
           strength,
           style: TextStyle(
-              color: _getPasswordStrengthColor(strength),
-              fontWeight: FontWeight.bold),
+            color: _getPasswordStrengthColor(strength),
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
@@ -415,17 +429,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 children: [
                   Icon(icon, size: 50, color: Color(0xFF007AFF)),
                   SizedBox(height: 10),
-                  Text(
-                    label,
-                    style: TextStyle(
-                        color: Color(0xFF007AFF), fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
+                  Text(label,
+                      style: TextStyle(
+                          color: Color(0xFF007AFF),
+                          fontWeight: FontWeight.bold)),
                   SizedBox(height: 10),
-                  Text(
-                    "Tap to upload",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                  Text("Tap to upload", style: TextStyle(color: Colors.grey)),
                 ],
               )
             : Stack(
@@ -465,16 +474,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
           : (_currentStep == 0 ? _nextStep : _signUpWithEmailAndPassword),
       child: _isLoading
           ? CircularProgressIndicator(color: Colors.white)
-          : Text(
-              _currentStep == 0 ? "Next" : "Sign Up",
-              style: TextStyle(fontSize: 18),
-            ),
+          : Text(_currentStep == 0 ? "Next" : "Sign Up",
+              style: TextStyle(fontSize: 18)),
       style: ElevatedButton.styleFrom(
         backgroundColor: Color(0xFF007AFF),
         padding: EdgeInsets.symmetric(vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         minimumSize: Size(double.infinity, 50),
       ),
     );

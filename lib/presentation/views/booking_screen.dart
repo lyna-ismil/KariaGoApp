@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'payment_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:kariago/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'payment_screen.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class BookingScreen extends StatefulWidget {
   @override
@@ -16,22 +15,27 @@ class _BookingScreenState extends State<BookingScreen> {
   String? selectedCar;
   DateTime? startDate;
   DateTime? endDate;
-  bool _isLoading = false; // Tracks booking state
+  bool _isLoading = false;
+  double? estimatedPrice;
 
+  final TextEditingController pickupLocationController =
+      TextEditingController();
   final TextEditingController dropOffController = TextEditingController();
-  final TextEditingController fullNameController = TextEditingController();
-  List<Map<String, dynamic>> availableCars = []; //  Store available cars
+  final TextEditingController estimatedDropOffController =
+      TextEditingController();
 
-  //  Add `fetchAvailableCars()` here
+  List<Map<String, dynamic>> availableCars = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAvailableCars();
+  }
+
   Future<void> fetchAvailableCars() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
-      List<dynamic> cars =
-          await ApiService.getAllCars(); // 🔁 Use shared function
-
+      List<dynamic> cars = await ApiService.getAllCars();
       setState(() {
         availableCars = cars
             .map((car) => {
@@ -41,37 +45,11 @@ class _BookingScreenState extends State<BookingScreen> {
             .toList();
       });
     } catch (e) {
-      print("❌ Error fetching cars: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load available cars.")),
+        SnackBar(content: Text("Failed to load cars.")),
       );
     }
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
-  //  Call fetchAvailableCars() when the screen loads
-  @override
-  void initState() {
-    super.initState();
-    fetchAvailableCars(); // Fetch cars on screen open
-  }
-
-  // Add `_buildSectionTitle()` here
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.blue[700],
-        ),
-      ),
-    );
+    setState(() => _isLoading = false);
   }
 
   String formatDate(DateTime? date) {
@@ -82,54 +60,34 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Future<void> _pickDateTime(BuildContext context, bool isStart) async {
     DateTime now = DateTime.now();
-    DateTime initialDate =
-        isStart ? now : startDate?.add(Duration(hours: 1)) ?? now;
+    DateTime initialDate = isStart ? now : (startDate ?? now);
 
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: now,
       lastDate: DateTime(now.year + 1),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.blue.shade800,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(pickedDate),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
-                primary: Colors.blue.shade800,
-                onPrimary: Colors.white,
-                onSurface: Colors.black,
-              ),
-            ),
-            child: child!,
-          );
-        },
       );
 
       if (pickedTime != null) {
-        DateTime finalDateTime = DateTime(pickedDate.year, pickedDate.month,
-            pickedDate.day, pickedTime.hour, pickedTime.minute);
+        DateTime finalDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
 
         setState(() {
           if (isStart) {
             startDate = finalDateTime;
-            endDate = null; // Reset end date
+            endDate = null;
           } else {
             endDate = finalDateTime;
           }
@@ -138,88 +96,110 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  void _proceedToPayment() async {
-    if (selectedCar == null ||
-        startDate == null ||
-        endDate == null ||
-        dropOffController.text.isEmpty ||
-        fullNameController.text.isEmpty) {
+  Future<void> _estimatePrice() async {
+    if (startDate == null || endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Please complete all fields!"),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text("Please select start and end dates.")),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    int bookingHour = startDate!.hour;
+    int bookingDayOfWeek = startDate!.weekday;
+    int bookingMonth = startDate!.month;
+    int isPeakHour = (bookingHour >= 17 && bookingHour <= 20) ? 1 : 0;
+    int isWeekend = (bookingDayOfWeek == 6 || bookingDayOfWeek == 7) ? 1 : 0;
+    double totalDuration = endDate!.difference(startDate!).inMinutes / 60.0;
+    int durationDays = endDate!.difference(startDate!).inDays;
+    int bookingCount = 3; // placeholder value
+    double driveBehaviorScore = 4.5; // placeholder value
 
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString("token");
-      String? userId = prefs.getString("userId");
+    final uri = Uri.parse("http://127.0.0.1:8000/predict");
+    final response = await http.post(
+      uri,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "booking_hour": bookingHour,
+        "booking_day_of_week": bookingDayOfWeek,
+        "booking_month": bookingMonth,
+        "is_peak_hour": isPeakHour,
+        "is_weekend": isWeekend,
+        "total_duration_hours": totalDuration,
+        "duration_days": durationDays,
+        "booking_count": bookingCount,
+        "drive_behavior_score": driveBehaviorScore
+      }),
+    );
 
-      if (token == null || userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Session expired. Please log in again.")),
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      bool success = await ApiService.createBooking(
-        userId: userId,
-        token: token,
-        carId: selectedCar!,
-        startDate: startDate!,
-        endDate: endDate!,
-        location: dropOffController.text.trim(),
-        fullName: fullNameController.text.trim(),
-      );
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Booking confirmed! Proceeding to payment.")),
-        );
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaymentScreen(
-              selectedCar: selectedCar!,
-              startDate: startDate!,
-              endDate: endDate!,
-              dropOffLocation: dropOffController.text,
-              fullName: fullNameController.text,
-              paymentMethod: "Not Selected Yet",
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Booking failed. Try again.")),
-        );
-      }
-    } catch (e) {
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        estimatedPrice = data["estimated_cost"];
+      });
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: Unable to process booking.")),
+        SnackBar(content: Text("Failed to estimate price.")),
       );
     }
+  }
 
-    setState(() => _isLoading = false);
+  Widget _buildSubmitButton() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _estimatePrice,
+            child: Text("Estimate Price"),
+          ),
+        ),
+        if (estimatedPrice != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+                "Estimated Price: \$${estimatedPrice!.toStringAsFixed(2)}",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Book a Car")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            _buildCarSelector(),
+            SizedBox(height: 20),
+            _buildDateSelector(),
+            SizedBox(height: 20),
+            _buildTextField(pickupLocationController, "Pickup Location",
+                Icons.location_on_outlined),
+            SizedBox(height: 10),
+            _buildTextField(estimatedDropOffController, "Estimated Drop-Off",
+                Icons.location_searching),
+            SizedBox(height: 10),
+            _buildTextField(
+                dropOffController, "Final Drop-Off", Icons.location_on),
+            SizedBox(height: 30),
+            _buildSubmitButton(),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildTextField(
-      TextEditingController controller, String hintText, IconData icon) {
+      TextEditingController controller, String hint, IconData icon) {
     return TextField(
       controller: controller,
       decoration: InputDecoration(
-        hintText: hintText,
+        hintText: hint,
         prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -227,25 +207,21 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildCarSelector() {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
+        hintText: "Select a Car",
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        hintText: "Select a car",
       ),
       value: selectedCar,
       items: availableCars.map((car) {
         return DropdownMenuItem<String>(
-          value: car["id"].toString(), //  Ensure ID is a String
-          child: Text(car["name"]), //  Display car name
+          value: car["id"],
+          child: Text(car["name"]),
         );
       }).toList(),
-      onChanged: (value) {
-        setState(() {
-          selectedCar = value; //  Store selected car ID
-        });
-      },
+      onChanged: (value) => setState(() => selectedCar = value),
     );
   }
 
-  Widget _buildDateSelector(BuildContext context) {
+  Widget _buildDateSelector() {
     return Row(
       children: [
         Expanded(
@@ -263,116 +239,6 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed:
-            _isLoading ? null : _proceedToPayment, //  Disable when loading
-        child: _isLoading
-            ? CircularProgressIndicator(color: Colors.white) // Show loader
-            : Text("Proceed to Payment"),
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(vertical: 15),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.network(
-              'https://pictures.dealer.com/w/westbroadhyundai/1240/20c14adcb3b6fa8de449c0f8b6a05f34x.jpg?impolicy=downsize_bkpt&w=2500',
-              fit: BoxFit.cover,
-            ),
-          ),
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 200.0,
-                floating: false,
-                pinned: true,
-                backgroundColor: Colors.transparent,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: Text(
-                    'Book with KariaGo Now',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 10.0,
-                          color: Colors.black,
-                          offset: Offset(5.0, 5.0),
-                        ),
-                      ],
-                    ),
-                  ),
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.7),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 30, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle("Select a Car"),
-                        _buildCarSelector(),
-                        _buildSectionTitle("Rental Period"),
-                        _buildDateSelector(context),
-                        _buildSectionTitle("Drop-Off Location"),
-                        _buildTextField(dropOffController,
-                            "Enter drop-off location", Icons.location_on),
-                        _buildSectionTitle("Full Name"),
-                        _buildTextField(fullNameController, "Enter full name",
-                            Icons.person),
-                        SizedBox(height: 30),
-                        _buildSubmitButton(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

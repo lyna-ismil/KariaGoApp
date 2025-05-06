@@ -94,7 +94,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         var request = http.MultipartRequest('POST', uri);
 
-        request.fields['fullName'] = _fullNameController.text.trim();
+        request.fields['fullName'] =
+            _fullNameController.text.trim(); // ✅ correct
         request.fields['email'] = _emailController.text.trim();
         request.fields['num_phone'] = _phoneNumberController.text.trim();
         request.fields['password'] = _passwordController.text.trim();
@@ -385,7 +386,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           return 'Please enter a valid phone number';
         if (hint == "Password" && value.length < 6)
           return 'Password must be at least 6 characters';
-        if (hint == "Full Name" && value.length < 2)
+        if (hint == "Full Name" && value.trim().isEmpty)
           return 'Please enter your full name';
         return null;
       },

@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import 'login_screen.dart';
-import 'booking_screen.dart';
 import 'estimation_screen.dart';
 import 'profile_screen.dart';
 import 'reclamation_screen.dart';
@@ -456,10 +455,27 @@ class _HomeScreenState extends State<HomeScreen>
                         SharedPreferences prefs =
                             await SharedPreferences.getInstance();
                         await prefs.setString("selectedCarId", car['_id']);
+
+                        if (!mounted) return;
+
+                        String pickupLocation = '';
+                        if (car['location'] is String) {
+                          pickupLocation = car['location'];
+                        } else if (car['location'] is Map &&
+                            car['location']['latitude'] != null &&
+                            car['location']['longitude'] != null) {
+                          pickupLocation =
+                              "${car['location']['latitude']},${car['location']['longitude']}";
+                        }
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => EstimationScreen()),
+                            builder: (context) => EstimationScreen(
+                              carId: car['_id'],
+                              pickupLocation: pickupLocation,
+                            ),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -682,8 +698,6 @@ class _HomeScreenState extends State<HomeScreen>
             _buildDrawerItem(context, Icons.person, 'Profile', ProfileScreen()),
             _buildDrawerItem(
                 context, Icons.headset_mic, 'Support', ReclamationScreen()),
-            _buildDrawerItem(
-                context, Icons.directions_car, 'Book a Car', BookingScreen()),
             Divider(color: lightBlue.withOpacity(0.3)),
             _buildDrawerItem(context, Icons.info, 'About Us', AboutUsScreen()),
             Divider(color: lightBlue.withOpacity(0.3)),

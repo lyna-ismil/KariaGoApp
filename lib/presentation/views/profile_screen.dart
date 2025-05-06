@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'login_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
@@ -351,7 +352,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Text("Logout"),
                   onPressed: () {
                     Navigator.of(context).pop();
-                    // TODO: Implement logout logic
+                    Future<void> _logout() async {
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+                      await prefs.remove("userId");
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginScreen()),
+                        (route) => false,
+                      );
+                    }
                   },
                 ),
               ],

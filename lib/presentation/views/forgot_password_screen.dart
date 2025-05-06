@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:kariago/services/api_service.dart'; 
+import 'package:kariago/services/api_service.dart';
 import 'package:lottie/lottie.dart';
 import './widgets/custom_text_field.dart';
 import 'login_screen.dart';

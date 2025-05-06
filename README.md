@@ -1,16 +1,51 @@
-# kariago
+#  KariaGo – Flutter Mobile App
 
-A new Flutter project.
+**KariaGo** is a modern Flutter mobile application that enables users to easily rent, unlock, and manage cars using their smartphones. The app is part of the KariaGo smart car rental system and offers a fast, secure, and user-friendly experience.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## Key Features
 
-A few resources to get you started if this is your first Flutter project:
+-  **User Authentication**
+  - Email & password login
+  - Real-time identity verification with CIN and driver’s license photos
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+-  **Car Browsing**
+  - View available rental cars on a map
+  - Select nearest cars based on location
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+-  **Booking System**
+  - Choose rental period and destination
+  - Estimate rental price (AI-supported)
+  - Confirm bookings with a digital contract
+
+-  **NFC Integration**
+  - Unlock cars via NFC
+  - Write/read data to NFC cards
+
+-  **User Profile**
+  - Edit profile info and profile picture
+  - View rental history and behavior score
+
+-  **Security Check**
+  - Upload car images before and after rental
+  - Ensure safe return and report damages
+
+---
+
+##  Technologies
+
+- **Flutter**
+- **Dart**
+- **NFC**
+- **REST API Integration**
+
+---
+
+##  Getting Started
+
+```bash
+git clone https://github.com/your-username/kariago-flutter.git
+cd kariago-flutter
+flutter pub get
+flutter run
